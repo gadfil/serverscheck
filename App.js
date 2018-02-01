@@ -18,7 +18,7 @@ import {
     Keyboard,
     AsyncStorage,
 } from 'react-native';
-// import Orientation from 'react-native-orientation';
+import * as Orientation from 'react-native-orientation';
 import Icon from 'react-native-vector-icons/dist/FontAwesome';
 import {
     MKProgress,
@@ -29,7 +29,8 @@ const isIphoneX = () => Platform.OS === 'ios' &&
     !Platform.isPad &&
     !Platform.isTVOS &&
     (dimen.height === 812 || dimen.width === 812)
-
+const isIpad = () => Platform.OS === 'ios' && Platform.isPad &&
+    (dimen.height === 1024 || dimen.width === 1366)
 const marginTop = () => Platform.OS === 'ios' ? isIphoneX() ? 45 : 25 : 0
 
 const styles = StyleSheet.create({
@@ -39,7 +40,11 @@ const styles = StyleSheet.create({
 
     webView: {
         flex: 1,
-        marginTop: marginTop()
+        marginTop: marginTop(),
+    },
+    webViewLandscape: {
+        flex: 1,
+        marginTop: 0
     },
     instructions: {
         textAlign: 'center',
@@ -77,18 +82,9 @@ const styles = StyleSheet.create({
         //height: 22,
     },
 });
-
+// let isLandscape = false;
 export default class App extends Component<{}> {
     // renderLoading = () => <ActivityIndicator size="large" style={{marginTop: dimen.height * 0.5}}/>;
-    renderLoading = () =>
-    <MKProgress.Indeterminate
-        style={styles.progress}
-        progress={0.2}
-        buffer={0.3}
-        progressColor="red"
-
-    />
-    // // renderLoadingWithData =()=><ActivityIndicator size="large" style={{height:dimen.height, marginTop:0.5 }}/>
 
     constructor(props) {
         super(props);
@@ -105,10 +101,10 @@ export default class App extends Component<{}> {
             showPreloader: false,
             url: "",
             progress: 0,
-            isLoading:true,
-            checkUrl:''
-
-        }
+            isLoading: true,
+            checkUrl: '',
+            isLandscape: false,
+        };
 
         this._onNavigationStateChange = this._onNavigationStateChange.bind(this);
         this._onMessage = this._onMessage.bind(this);
@@ -118,6 +114,15 @@ export default class App extends Component<{}> {
     componentWillMount() {
         this.keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', this._keyboardDidShow.bind(this));
         this.keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', this._keyboardDidHide.bind(this));
+        const initial = Orientation.getInitialOrientation();
+        if (initial === 'PORTRAIT') {
+            // do something
+            console.log('PORTRAIT')
+        } else {
+            // do something else
+            console.log('LANDSCAPE')
+        }
+        console.log('initial', initial)
 
     }
 
@@ -143,17 +148,33 @@ export default class App extends Component<{}> {
         this.setState({isKeyboardShow: false})
     }
 
+    _orientationDidChange = (orientation) => {
+        Orientation.unlockAllOrientations();
+        if (orientation === 'LANDSCAPE') {
+            console.log('LANDSCAPE')
+            this.setState({
+                isLandscape: true
+            })
+        } else {
+            console.log('PORTRAIT')
+            this.setState({
+                isLandscape: false
+            })
+        }
+    }
+
     componentDidMount() {
+        if (isIphoneX()) {
+            Orientation.lockToPortrait();
+        }
         NetInfo.isConnected.fetch().done(isConnected => this.setState({isConnected}))
-        // this.checkNewVersion()
-        // Orientation.addOrientationListener(this._orientationDidChange);
         BackHandler.addEventListener('hardwareBackPress', this._backButton.bind(this));
-        // setTimeout((() => {
-        //     if (this.refs.progBar) {
-        //         this.refs.progBar.progress = 0.6;
-        //     }
-        // }), 1000);
-        // setTimeout(()=>this.setState({login:null, password:null}), 5000)
+        Orientation.addOrientationListener(this._orientationDidChange);
+        Orientation.addSpecificOrientationListener((specificOrientation) => {
+            if (specificOrientation === "PORTRAITUPSIDEDOWN") {
+                Orientation.lockToPortrait();
+            }
+        });
     }
 
 
@@ -174,7 +195,6 @@ export default class App extends Component<{}> {
     }
 
     _onNavigationStateChange = (navState) => {
-        // console.log('navState', navState, this._bridge, new Date())
         if (navState.url.search('https://my.serverscheck.com/home.php') === 0 || navState.url.search('https://my.serverscheck.com/index.php') === 0) {
             this.setState({
                 loggedIn: true,
@@ -186,24 +206,22 @@ export default class App extends Component<{}> {
                 canGoHome: navState.canGoBack,
             });
         }
-        if (navState.url.search('react-js-navigation://')===0){
+        if (navState.url.search('react-js-navigation://') === 0) {
             this.setState({
                 isLoading: false
             })
-        }else if (this.state.checkUrl!==navState.url){
-            // console.log('checkUrl', this.state.checkUrl, navState.url)
+        } else if (this.state.checkUrl !== navState.url) {
             this.setState({
                 checkUrl: navState.url,
                 isLoading: true,
             })
-        } else{
+        } else {
             this.setState({
                 isLoading: false
             })
         }
 
         if (navState.url.search('https://my.serverscheck.com/logout.php') === 0) {
-            // console.log('logout')
             // this._bridge.injectJavaScript("localStorage.clear();")
         }
 
@@ -223,14 +241,13 @@ export default class App extends Component<{}> {
         //     // console.log('onLoadEnd', data);
         //     this.setState({showPreloader: true});
         // }
-        // console.log('onLoadEnd', new Date())
-        this.setState({isLoading:false});
+
+        this.setState({isLoading: false});
 
     };
 
     _onMessage = (event) => {
-        //Prints out data that was passed.
-        // let value = JSON.parse(event)
+
         let data = [];
         if (event.nativeEvent.data && event.nativeEvent.data.length !== 0 && event.nativeEvent.data !== "null,null") {
             data = event.nativeEvent.data.split(",");
@@ -239,7 +256,6 @@ export default class App extends Component<{}> {
             this.setState({login: null, password: null, showPreloader: false})
         }
 
-        // console.log("onMessage",event.nativeEvent.data);
     };
 
     render() {
@@ -285,96 +301,107 @@ export default class App extends Component<{}> {
         });   
     `;
 
-        // console.log('isLoading', this.state.isLoading)
+        console.log('height', dimen.height, dimen.width, isIphoneX() && this.state.isLandscape)
+
+
         return (
-            <View style={{
-                flex: 1, backgroundColor: 'rgb(254, 143, 29)'
-            }}>
-                <StatusBar
-                    barStyle="light-content"
-                    backgroundColor="#c56000"
-                />
-                <WebView
-                    mixedContentMode='always'
-                    userAgent='ServersCheck_Mobile_App_4_00'
+            <View style={{flex: 1, flexDirection: 'row', backgroundColor: 'rgb(254, 143, 29)'}}>
+                <View style={isIphoneX() && this.state.isLandscape ? {
+                        justifyContent: 'flex-start',
+                        width: 45,
+                        backgroundColor: '#F5F5F5'
+                    }
+                    : {justifyContent: 'flex-start', width: 0, backgroundColor: '#fff'}
+                }/>
+                <View style={{flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgb(254, 143, 29)'}}>
+                    <StatusBar
+                        barStyle="light-content"
+                        backgroundColor="#c56000"
+                    />
+                    <WebView
+                        mixedContentMode='always'
+                        userAgent='ServersCheck_Mobile_App_4_00'
 
-                    source={{
-                        // uri: 'https://github.com/',ServersCheck_Mobile_App_4_00
+                        source={{
+                            // uri: 'https://github.com/',ServersCheck_Mobile_App_4_00
 
-                        uri: 'https://my.serverscheck.com/',
-                    }}
-                    javaScriptEnabled={true}
-                    ref={(b) => this._bridge = b}
-                    style={styles.webView}//568 iPhone 5s 667 iPhone 6s
-                    onError={() => NetInfo.isConnected.fetch().done(isConnected => this.setState({isConnected}))}
-                    renderError={() => this.renderError()}
-                    onNavigationStateChange={this._onNavigationStateChange}
-                    onLoadEnd={this._onLoDEnd}
-                    injectedJavaScript={jsCode}
-                    onMessage={(data) => this._onMessage(data)}
-                    // startInLoadingState={true}
-                    // renderLoading={this.renderLoading}
-                />
-                {/*{this.state.isLoading*/}
-                {this.state.isLoading && <MKProgress.Indeterminate
-                    style={styles.progress}
-                    progress={0.2}
-                    buffer={0.3}
-                    progressColor="red"
-
-                />}
-
-                <View style={{
-                    height: this.state.isKeyboardShow ? 0 : isIphoneX() ? 70 : 50,
-                    backgroundColor: 'rgb(254, 143, 29)',
-                    flexDirection: 'row'
-                }}>
-                    <TouchableOpacity
-                        onPress={() => this._bridge.goBack()}
-                        style={styles.btnClickContain}
-                        disabled={!this.state.canGoBack}
-                    >
-                        <View
-                            style={styles.btnContainer}>
-                            <Icon
-                                name="angle-left"
-                                size={25}
-                                color={"#ffffff"}
-                                style={styles.btnIcon}/>
-                        </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => {
-                            this._bridge.injectJavaScript("window.location.href='https://my.serverscheck.com/home.php'");
+                            uri: 'https://my.serverscheck.com/',
                         }}
-                        style={styles.btnClickContain}
-                        disabled={!this.state.canGoHome}
-                    >
-                        <View
-                            style={styles.btnContainer}>
-                            <Icon
-                                name="home"
-                                size={25}
-                                // color={!this.state.canGoHome ? "#ffffff" : "#A52A2A"}
-                                color={"#ffffff"}
-                                style={styles.btnIcon}/>
-                        </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => this._bridge.goForward()}
-                        style={styles.btnClickContain}
-                        disabled={!this.state.canGoForward}
-                    >
-                        <View
-                            style={styles.btnContainer}>
-                            <Icon
-                                name="angle-right"
-                                size={25}
-                                color={"#ffffff"}
-                                style={styles.btnIcon}/>
-                        </View>
-                    </TouchableOpacity>
+                        javaScriptEnabled={true}
+                        ref={(b) => this._bridge = b}
+                        style={Platform.OS === 'ios' ? this.state.isLandscape?isIpad?{flex: 1, marginTop: 25}:{flex: 1, marginTop: 0}:isIphoneX()? {
+                            flex: 1,
+                            marginTop: 45
+                        } : {flex: 1, marginTop: 25} :{flex: 1, marginTop: 0}}//568 iPhone 5s 667 iPhone 6s
+                        onError={() => NetInfo.isConnected.fetch().done(isConnected => this.setState({isConnected}))}
+                        renderError={() => this.renderError()}
+                        onNavigationStateChange={this._onNavigationStateChange}
+                        onLoadEnd={this._onLoDEnd}
+                        injectedJavaScript={jsCode}
+                        onMessage={(data) => this._onMessage(data)}
+                        // startInLoadingState={true}
+                        // renderLoading={this.renderLoading}
+                    />
+                    {this.state.isLoading && <MKProgress.Indeterminate
+                        style={styles.progress}
+                        progress={0.2}
+                        buffer={0.3}
+                        progressColor="red"
+
+                    />}
+
+                    <View style={{
+                        height: this.state.isKeyboardShow ? 0 : isIphoneX() ? 70 : 50,
+                        backgroundColor: 'rgb(254, 143, 29)',
+                        flexDirection: 'row'
+                    }}>
+                        <TouchableOpacity
+                            onPress={() => this._bridge.goBack()}
+                            style={styles.btnClickContain}
+                            disabled={!this.state.canGoBack}
+                        >
+                            <View
+                                style={styles.btnContainer}>
+                                <Icon
+                                    name="angle-left"
+                                    size={25}
+                                    color={"#ffffff"}
+                                    style={styles.btnIcon}/>
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => {
+                                this._bridge.injectJavaScript("window.location.href='https://my.serverscheck.com/home.php'");
+                            }}
+                            style={styles.btnClickContain}
+                            disabled={!this.state.canGoHome}
+                        >
+                            <View
+                                style={styles.btnContainer}>
+                                <Icon
+                                    name="home"
+                                    size={25}
+                                    color={"#ffffff"}
+                                    style={styles.btnIcon}/>
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => this._bridge.goForward()}
+                            style={styles.btnClickContain}
+                            disabled={!this.state.canGoForward}
+                        >
+                            <View
+                                style={styles.btnContainer}>
+                                <Icon
+                                    name="angle-right"
+                                    size={25}
+                                    color={"#ffffff"}
+                                    style={styles.btnIcon}/>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
                 </View>
+                <View style={{backgroundColor: '#F5F5F5', width: isIphoneX() && this.state.isLandscape ? 45 : 0}}/>
             </View>
         );
     }
