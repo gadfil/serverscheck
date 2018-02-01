@@ -1,0 +1,63 @@
+{
+  "sd": [
+    {
+      "id": 1,
+      "name": "ВСД Новосибирск",
+      "users": [
+        {
+          "id": 1,
+          "name": "Иванов",
+          "phone": "1111"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "CЗСД"
+    }
+  ],
+  "networks": [
+    {
+      "id": 1,
+      "name": "Title 1",
+      "users": [
+        {
+          "id": 1,
+          "name": "Иванов",
+          "phone": "1111"
+        }
+      ]
+    }
+  ],
+  "cities": [
+    {
+      "id": 1,
+      "name": "Новосибирск",
+      "idSd": 1,
+      "idNetworks": 1,
+      "users": [
+        {
+          "id": 1,
+          "name": "Иванов",
+          "phone": "1111"
+        }
+      ]
+    }
+  ],
+  "tradePoints": [
+    {
+      "id": 1,
+      "name": "Name",
+      "city": 1,
+      "network": 1,
+      "sd": 1,
+      "users": [
+        {
+          "id": 1,
+          "name": "Иванов",
+          "phone": "1111"
+        }
+      ]
+    }
+  ]
+}
